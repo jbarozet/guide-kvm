@@ -2,7 +2,7 @@
 
 <br>
 
-## The “default” network
+## 1. The “default” network
 
 When **libvirt** is in use and the **libvirtd** daemon is running, a default network is created. We can verify that this network exists by using the `virsh` utility, which on the majority of Linux distribution usually comes with the `libvirt-client` package. To invoke the utility so that it displays all the available virtual networks, we should include the `net-list` subcommand:
 - `sudo virsh net-list --all`
@@ -68,22 +68,29 @@ The result of running the command is:
 
 ```bash
 # ip link show master virbr0
-7: vnet2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master virbr0 state UNKNOWN mode DEFAULT group default qlen 1000
+7: vnet0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master virbr0 state UNKNOWN mode DEFAULT group default qlen 1000
     link/ether fe:54:00:61:d5:93 brd ff:ff:ff:ff:ff:ff
 #
 ```
 
-As we can see, there is only one interface currently attached to the bridge, `vnet2`. The `vnet2` interface is a virtual ethernet interface: it is created and added to
-the bridge, and its purpose is just to provide a stable **MAC** address for the bridge.
+As we can see, there is only one interface currently attached to the bridge, `vnet0`. The `vnet0` interface is a virtual ethernet interface: it is created and added to the bridge, and its purpose is to provide a **MAC** address for the bridge.
 
-Other virtual interfaces will be added to the bridge when we create and launch virtual machines. For the sake of this tutorial I created and
-launched a Debian (Buster) virtual machine; if we re-launch the command we used above to display the bridge slave interfaces, we can see a new one was added, `vnet0`:
+Other virtual interfaces will be added to the bridge when we create and launch virtual machines. For the sake of this tutorial I created and launched a new virtual machine; if we re-launch the command we used above to display the bridge slave interfaces, we can see a new one was added, `vnet1`:
+
+```bash
+# ip link show master virbr0
+5: vnet0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master virbr0 state UNKNOWN mode DEFAULT group default qlen 1000
+    link/ether fe:54:00:4c:6c:6c brd ff:ff:ff:ff:ff:ff
+6: vnet1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master virbr0 state UNKNOWN mode DEFAULT group default qlen 1000
+    link/ether fe:54:00:38:22:fe brd ff:ff:ff:ff:ff:ff
+#
+```
 
 No physical interfaces should ever be added to the `virbr0` bridge, since it uses **NAT** to provide connectivity.
 
 <br>
 
-## Use bridged networking for virtual machines
+## 2. Use bridged networking for virtual machines
 
 The default network provides a very straightforward way to achieve connectivity when creating virtual machines: everything is “ready” and works out of the box. Sometimes, however, we want to achieve a **full bridging** connection, where the guest devices are connected to the host **LAN**, without using **NAT**, we should create a new bridge and share one of the host physical ethernet interfaces. Let’s see how to do this step by step.
 
@@ -132,7 +139,9 @@ $ sudo ip link show master br0
 At this point we can assign a static IP address to the bridge. Let’s say we want to use `192.168.0.90/24`; we would run:
 - `sudo ip address add dev br0 192.168.0.90/24`
 
-## Creating a new virtual network
+<br>
+
+## 3. Creating a new virtual network
 
 At this point we should define a new “network” to be used by our virtual machines. We open a file with our favorite editor and paste the following content inside of it, than save it as `bridged-network.xml`:
 
@@ -193,13 +202,11 @@ Create a network10 network configuration file, using NAT:
 ```
 
 Define and start networks
-
 - `sudo virsh net-define network10.xml`
 - `sudo virsh net-start network10`
 - `sudo virsh net-autostart network10`
 
-Check network is created and active
-
+Check network is created and active:
 ```
 # sudo virsh net-list --all
 [sudo] password for jmb: 
@@ -212,18 +219,14 @@ Check network is created and active
 ```
 
 In the offchance this lists nothing, define it and set it to autostart:
-
 - `virsh net-autostart default`
 
 Then try starting it up:
-
 - `sudo virsh net-start default`
 
 VM Interface association for my Guest machine:
-
 ```bash
-# sudo virsh domiflist cedge                                                                                                            1 
-[sudo] password for jmb: 
+# sudo virsh domiflist cedge
  Interface   Type      Source    Model    MAC
 -------------------------------------------------------------
  vnet2       network   default   virtio   52:54:00:61:d5:93
@@ -231,7 +234,9 @@ VM Interface association for my Guest machine:
 #
 ```
 
-## More information
+<br>
+
+## 4. More information
 
 [How to use bridged networking with libvirt and kvm](https://linuxconfig.org/how-to-use-bridged-networking-with-libvirt-and-kvm)
 
